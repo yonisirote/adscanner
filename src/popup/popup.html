@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Scanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 450px;
+            min-height: 300px;
+            max-height: 600px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .header {
+            background: white;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        h1 {
+            font-size: 20px;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .stat-count {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 12px;
+            width: 100%;
+            transition: transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .content {
+            background: white;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        #status {
+            padding: 12px 20px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        #results {
+            padding: 12px 20px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        
+        .ad-item {
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ddd;
+            transition: transform 0.1s;
+        }
+        
+        .ad-item:hover {
+            transform: translateX(2px);
+        }
+        
+        .ad-item.risk-safe { border-left-color: #4CAF50; }
+        .ad-item.risk-low { border-left-color: #8BC34A; }
+        .ad-item.risk-medium { border-left-color: #FF9800; }
+        .ad-item.risk-high { border-left-color: #FF5722; }
+        .ad-item.risk-dangerous { border-left-color: #F44336; }
+        
+        .ad-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .ad-type {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .ad-network {
+            font-size: 11px;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .risk-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .risk-badge.safe { background: #E8F5E9; color: #2E7D32; }
+        .risk-badge.low { background: #F1F8E9; color: #558B2F; }
+        .risk-badge.medium { background: #FFF3E0; color: #E65100; }
+        .risk-badge.high { background: #FFE0B2; color: #D84315; }
+        .risk-badge.dangerous { background: #FFEBEE; color: #C62828; }
+        .risk-badge.checking { background: #E3F2FD; color: #1976D2; }
+        
+        .ad-url {
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .ad-destination {
+            font-size: 11px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .unwrapped-badge {
+            background: #E3F2FD;
+            color: #1976D2;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .risk-score {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Ad Scanner</h1>
+        <div class="stats">
+            <div class="stat-item">
+                <span>Ads:</span>
+                <span class="stat-count" id="adCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span>⚠️ Risky:</span>
+                <span class="stat-count" id="riskyCount">0</span>
+            </div>
+        </div>
+        <button id="scanBtn">Scan Current Page</button>
+    </div>
+    <div class="content">
+        <div id="status">Click "Scan Current Page" to detect ads</div>
+        <div id="results"></div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

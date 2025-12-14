@@ -1,0 +1,17 @@
+nohup: ignoring input
+[startup] URLVoid API key not configured - using mock data
+[startup] Scamadvisor API key not configured - using mock data
+[startup] Server running on http://localhost:3002
+Started development server: http://localhost:3000
+[check] https://google.com - cache miss (343ms)
+[check] https://example.com - cache miss (67ms)
+[check] https://www.reddit.com/search/?q=%22Raad+Saad%22&source=trending&cId=caae3228-48c6-4a84-9b70-5441e1efe55b&iId=f7b09467-a855-4b43-999a-b6c98f606cd1 - cache miss (28ms)
+[check] https://www.reddit.com/r/popular/best/?geo_filter=ca - cached hit (10ms)
+[check] https://www.reddit.com/r/todayilearned/comments/1plworj/til_in_2002_eminem_had_the_1_film_at_the_box/ - cached hit (2ms)
+[check] https://www.reddit.com/r/CringeTikToks/comments/1plrw84/karen_blocks_road_with_her_truck_and_calls_ice_on/ - cached hit (1ms)
+[check] https://www.reddit.com/r/ProgressiveHQ/comments/1plwtx4/sad_facts_are/ - cached hit (0ms)
+[check] https://www.reddit.com/r/legaladvice - cached hit (0ms)
+[check] https://ads.reddit.com/register?utm_source=web3x_consumer&utm_name=left_nav_cta - cache miss (7ms)
+[check] https://www.reddit.com/r/RedDeadOnline - cached hit (3ms)
+[check] https://www.google.com/search?sca_esv=c249fe050a18e619&q=YouTube+app+download&sa=X&ved=2ahUKEwjdm-_g97uRAxVH-QIHHQlAM7wQ1QJ6BAgvEAE - cache miss (20ms)
+[check] https://www.google.com/search?q=youtube&oq=you&gs_lcrp=EgZjaHJvbWUqEAgAEAAYgwEY4wIYsQMYgAQyEAgAEAAYgwEY4wIYsQMYgAQyDQgBEC4YgwEYsQMYgAQyDQgCEC4YgwEYsQMYgAQyDQgDEAAYgwEYsQMYgAQyDQgEEAAYgwEYsQMYgAQyBwgFEAAYgAQyBggGEAUYQDIGCAcQRRg90gEHNDQ3ajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8# - cached hit (5ms)
