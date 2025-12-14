@@ -1,8 +1,15 @@
 import { detectAllAds } from './adDetector';
+import { injectStyles, addOverlay, removeAllBadges } from './adOverlay';
 import type { DetectedAd, MessageAction, CheckUrlMessage, CheckUrlResponse } from '../types';
 
 // Content script
 console.log('[Content] Ad Scanner content script loaded on', window.location.href);
+
+// Inject overlay styles on load
+injectStyles();
+
+// Map to track ad elements for overlay injection
+const adElementMap = new Map<string, Element>();
 
 // Send message to background
 chrome.runtime.sendMessage(
@@ -19,6 +26,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Content] Message from popup:', request);
   if (request.type === 'SCAN') {
     console.log('[Content] Scanning page for ads...');
+    
+    // Clean up previous overlays
+    removeAllBadges();
+    adElementMap.clear();
     
     try {
       const detectedAds = detectAllAds();
@@ -102,6 +113,72 @@ async function checkAdsWithBackend(ads: DetectedAd[]): Promise<DetectedAd[]> {
   });
 
   await Promise.all(promises);
+  
+  // Add overlays to risky ads
+  addOverlaysToAds(checkedAds);
+  
   return checkedAds;
+}
+
+/**
+ * Find and add overlays to ad elements
+ */
+function addOverlaysToAds(ads: DetectedAd[]): void {
+  ads.forEach(ad => {
+    if (!ad.riskLevel || ad.riskLevel === 'safe' || ad.riskLevel === 'low') {
+      return; // Skip safe/low risk ads
+    }
+
+    // Find the element based on ad type and identifiers
+    let element: Element | null = null;
+
+    if (ad.type === 'iframe') {
+      const iframes = document.querySelectorAll('iframe');
+      for (const iframe of iframes) {
+        if (iframe.src === ad.sourceUrl) {
+          element = iframe;
+          break;
+        }
+      }
+    } else if (ad.type === 'script') {
+      const scripts = document.querySelectorAll('script');
+      for (const script of scripts) {
+        if (script.src === ad.sourceUrl) {
+          element = script.parentElement; // Use parent since script itself isn't visible
+          break;
+        }
+      }
+    } else if (ad.type === 'link') {
+      const links = document.querySelectorAll('a');
+      for (const link of links) {
+        if (link.href === ad.sourceUrl) {
+          element = link;
+          break;
+        }
+      }
+    } else if (ad.type === 'element') {
+      // Try to find by data-ad-url or other attributes
+      const candidates = document.querySelectorAll('[data-ad-url], [data-ad-network], [class*="ad-"], [id*="ad-"]');
+      for (const candidate of candidates) {
+        const dataUrl = candidate.getAttribute('data-ad-url');
+        if (dataUrl === ad.sourceUrl) {
+          element = candidate;
+          break;
+        }
+      }
+    }
+
+    if (element && element instanceof HTMLElement) {
+      try {
+        addOverlay(ad, element);
+        adElementMap.set(ad.id, element);
+        console.log(`[Content] Added overlay to ad ${ad.id}`);
+      } catch (error) {
+        console.error(`[Content] Error adding overlay to ad ${ad.id}:`, error);
+      }
+    } else {
+      console.warn(`[Content] Could not find element for ad ${ad.id} (${ad.type})`);
+    }
+  });
 }
 
