@@ -1,5 +1,5 @@
 import { getDb, saveDb } from '../db/index';
-import type { CachedCheck, ScamadvisorResult, UrlVoidResult } from '../types';
+import type { CachedCheck, GoogleSafeBrowsingResult, VirusTotalResult } from '../types';
 import { extractDomain } from '../utils/url';
 
 const DEFAULT_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -23,10 +23,10 @@ export async function getCachedResult(url: string): Promise<CachedCheck | null> 
     const cached = {
       id: row[0],
       domain: row[1],
-      urlvoidScore: row[2],
-      urlvoidData: row[3],
-      scamadvisorScore: row[4],
-      scamadvisorData: row[5],
+      virusTotalScore: row[2],
+      virusTotalData: row[3],
+      googleSafeBrowsingScore: row[4],
+      googleSafeBrowsingData: row[5],
       combinedRiskScore: row[6],
       createdAt: row[7],
       expiresAt: row[8],
@@ -39,8 +39,8 @@ export async function getCachedResult(url: string): Promise<CachedCheck | null> 
 
     const cachedCheck: CachedCheck = {
       domain: cached.domain,
-      urlvoidResult: cached.urlvoidData ? JSON.parse(cached.urlvoidData) : null,
-      scamadvisorResult: cached.scamadvisorData ? JSON.parse(cached.scamadvisorData) : null,
+      virusTotalResult: cached.virusTotalData ? JSON.parse(cached.virusTotalData) : null,
+      googleSafeBrowsingResult: cached.googleSafeBrowsingData ? JSON.parse(cached.googleSafeBrowsingData) : null,
       combinedRiskScore: cached.combinedRiskScore,
       cachedAt: new Date(cached.createdAt).toISOString(),
       expiresAt: new Date(cached.expiresAt).toISOString(),
@@ -55,8 +55,8 @@ export async function getCachedResult(url: string): Promise<CachedCheck | null> 
 
 export async function setCachedResult(
   url: string,
-  urlvoidResult: UrlVoidResult | null,
-  scamadvisorResult: ScamadvisorResult | null,
+  virusTotalResult: VirusTotalResult | null,
+  googleSafeBrowsingResult: GoogleSafeBrowsingResult | null,
   combinedRiskScore: number
 ): Promise<void> {
   try {
@@ -70,14 +70,14 @@ export async function setCachedResult(
 
     // Insert new entry
     db.run(
-      `INSERT INTO url_checks (domain, urlvoid_score, urlvoid_data, scamadvisor_score, scamadvisor_data, combined_risk_score, created_at, expires_at)
+      `INSERT INTO url_checks (domain, virustotal_score, virustotal_data, googlesafebrowsing_score, googlesafebrowsing_data, combined_risk_score, created_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         domain,
-        urlvoidResult?.riskScore ?? null,
-        urlvoidResult ? JSON.stringify(urlvoidResult) : null,
-        scamadvisorResult?.riskScore ?? null,
-        scamadvisorResult ? JSON.stringify(scamadvisorResult) : null,
+        virusTotalResult?.riskScore ?? null,
+        virusTotalResult ? JSON.stringify(virusTotalResult) : null,
+        googleSafeBrowsingResult?.riskScore ?? null,
+        googleSafeBrowsingResult ? JSON.stringify(googleSafeBrowsingResult) : null,
         combinedRiskScore,
         now,
         expiresAt,

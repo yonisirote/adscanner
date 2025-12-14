@@ -9,7 +9,9 @@ function generateAdId(): string {
 }
 
 /**
- * Find ad iframes on the page
+ * Find ad iframes on the page by checking src against known ad domains
+ * 
+ * @returns Array of detected ad iframes with metadata
  */
 export function findAdIframes(): DetectedAd[] {
   const ads: DetectedAd[] = [];
@@ -37,7 +39,9 @@ export function findAdIframes(): DetectedAd[] {
 }
 
 /**
- * Find ad scripts on the page
+ * Find ad scripts on the page by checking src against known ad domains
+ * 
+ * @returns Array of detected ad scripts with metadata
  */
 export function findAdScripts(): DetectedAd[] {
   const ads: DetectedAd[] = [];
@@ -181,7 +185,17 @@ export function extractDestinationUrl(element: HTMLElement): string | undefined 
 }
 
 /**
- * Detect all ads on the page
+ * Detect all ads on the page using multiple detection methods
+ * 
+ * Combines detection from:
+ * - Ad iframes (src matching ad networks)
+ * - Ad scripts (src matching ad networks)
+ * - Sponsored links (text/class containing 'sponsored', 'ad', etc.)
+ * - Ad elements (elements with data-ad-* attributes)
+ * 
+ * Results are deduplicated by sourceUrl to avoid duplicates
+ * 
+ * @returns Array of all detected ads (deduplicated), sorted by type
  */
 export function detectAllAds(): DetectedAd[] {
   const iframes = findAdIframes();

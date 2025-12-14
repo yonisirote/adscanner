@@ -10,10 +10,10 @@ export async function migrate(): Promise<void> {
       CREATE TABLE IF NOT EXISTS url_checks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         domain TEXT NOT NULL UNIQUE,
-        urlvoid_score INTEGER,
-        urlvoid_data TEXT,
-        scamadvisor_score INTEGER,
-        scamadvisor_data TEXT,
+        virustotal_score REAL,
+        virustotal_data TEXT,
+        googlesafebrowsing_score REAL,
+        googlesafebrowsing_data TEXT,
         combined_risk_score REAL NOT NULL,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL

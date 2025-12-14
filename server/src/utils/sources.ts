@@ -1,25 +1,26 @@
-import type { SourceResult, UrlVoidResult, ScamadvisorResult } from '../types';
+import type { SourceResult, VirusTotalResult, GoogleSafeBrowsingResult } from '../types';
 
 /**
- * Build a source result from URLVoid API response.
+ * Build a source result from VirusTotal API response.
  * Returns error details if result is null.
  */
-export function buildUrlVoidSource(result: UrlVoidResult | null): SourceResult {
+export function buildVirusTotalSource(result: VirusTotalResult | null): SourceResult {
   if (result) {
     return {
-      source: 'urlvoid',
+      source: 'virustotal',
       score: result.riskScore,
       details: {
         detectionCount: result.detectionCount,
         enginesCount: result.enginesCount,
         scanDate: result.scanDate,
-        ip: result.details.ip,
+        categories: result.details.categories,
+        reputation: result.details.reputation,
         engines: result.details.engines?.slice(0, 5),
       },
     };
   } else {
     return {
-      source: 'urlvoid',
+      source: 'virustotal',
       score: 0,
       details: { error: 'Service unavailable' },
     };
@@ -27,25 +28,24 @@ export function buildUrlVoidSource(result: UrlVoidResult | null): SourceResult {
 }
 
 /**
- * Build a source result from Scamadvisor API response.
+ * Build a source result from Google Safe Browsing API response.
  * Returns error details if result is null.
  */
-export function buildScamadvisorSource(result: ScamadvisorResult | null): SourceResult {
+export function buildGoogleSafeBrowsingSource(result: GoogleSafeBrowsingResult | null): SourceResult {
   if (result) {
     return {
-      source: 'scamadvisor',
+      source: 'google-safe-browsing',
       score: result.riskScore,
       details: {
-        trustScore: result.trustScore,
+        isSafe: result.details.isSafe,
+        threatTypes: result.threatTypes,
         scanDate: result.scanDate,
-        country: result.details.countryCode,
-        hasSSL: result.details.hasSSL,
-        riskFactors: result.details.riskFactors?.slice(0, 5),
+        platformTypes: result.details.platformTypes,
       },
     };
   } else {
     return {
-      source: 'scamadvisor',
+      source: 'google-safe-browsing',
       score: 0,
       details: { error: 'Service unavailable' },
     };

@@ -1,6 +1,19 @@
 import type { CheckResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:3002';
+// Default API URL for development - configurable via chrome.storage.sync
+const DEFAULT_API_URL = 'http://localhost:3002';
+
+/**
+ * Get the API base URL from storage or use default
+ */
+async function getApiBaseUrl(): Promise<string> {
+  try {
+    const result = await chrome.storage.sync.get('apiBaseUrl');
+    return result.apiBaseUrl || DEFAULT_API_URL;
+  } catch {
+    return DEFAULT_API_URL;
+  }
+}
 
 export interface ApiError {
   message: string;
@@ -9,13 +22,22 @@ export interface ApiError {
 
 /**
  * Check a URL for risk using the backend API
- * @param url The URL to check
- * @returns Promise<CheckResponse> Risk analysis results
+ * 
+ * @param url The URL to check for security threats
+ * @returns Promise<CheckResponse> Risk analysis results with score and level
  * @throws ApiError on network or API errors
+ * 
+ * Example:
+ * ```
+ * const result = await checkUrl('http://example.com');
+ * console.log(result.riskScore); // 0-100, higher = riskier
+ * console.log(result.riskLevel); // 'safe' | 'low' | 'medium' | 'high' | 'dangerous'
+ * ```
  */
 export async function checkUrl(url: string): Promise<CheckResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/check`, {
+    const apiBaseUrl = await getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/check`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

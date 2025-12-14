@@ -168,7 +168,7 @@ async function loadDetectedAds() {
 
   try {
     const message: GetDetectedAdsMessage = {
-      action: 'GET_DETECTED_ADS' as any,
+      action: MessageAction.GET_DETECTED_ADS,
       tabId: currentTabId,
     };
 
@@ -255,10 +255,10 @@ function pollForUpdates() {
     }
 
     try {
-      const message: GetDetectedAdsMessage = {
-        action: 'GET_DETECTED_ADS' as any,
-        tabId: currentTabId,
-      };
+       const message: GetDetectedAdsMessage = {
+         action: MessageAction.GET_DETECTED_ADS,
+         tabId: currentTabId,
+       };
 
       const response = await chrome.runtime.sendMessage(message) as GetDetectedAdsResponse;
 

@@ -30,8 +30,8 @@ Extension → Backend Server → External APIs
 
 ### Phase 2: Backend API ✅
 - [x] 2.1 Setup Bun + Hono server
-- [x] 2.2 Integrate urlvoid API
-- [x] 2.3 Integrate scamadvisor API
+- [x] 2.2 Integrate VirusTotal API (replaced URLVoid - Dec 2025)
+- [x] 2.3 Integrate Google Safe Browsing API (replaced ScamAdvisor - Dec 2025)
 - [x] 2.4 Add SQLite caching layer
 - [x] 2.5 Create `/check` endpoint (accepts URL, returns risk score)
 
@@ -41,10 +41,11 @@ Extension → Backend Server → External APIs
 - [x] 3.3 Visual indicators on page (badge/overlay on suspicious ads)
 
 ### Phase 4: Polish
-- [ ] 4.1 Rate limiting + error handling
-- [ ] 4.2 Settings page (sensitivity, whitelist)
-- [ ] 4.3 Deploy backend
-- [ ] 4.4 Package extension for Chrome Web Store
+- [x] 4.1 API Migration (VirusTotal + Google Safe Browsing)
+- [ ] 4.2 Rate limiting + error handling
+- [ ] 4.3 Settings page (sensitivity, whitelist)
+- [ ] 4.4 Deploy backend
+- [ ] 4.5 Package extension for Chrome Web Store
 
 ---
 

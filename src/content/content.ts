@@ -32,37 +32,52 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     adElementMap.clear();
     
     try {
-      const detectedAds = detectAllAds();
-      console.log(`[Content] Found ${detectedAds.length} ads:`, detectedAds);
-      
-      // Send detected ads to background for storage
-      chrome.runtime.sendMessage({
-        action: 'UPDATE_DETECTED_ADS',
-        ads: detectedAds,
-      });
-      
-      // Check each ad URL with the backend API
-      if (detectedAds.length > 0) {
-        checkAdsWithBackend(detectedAds).then((checkedAds) => {
-          console.log('[Content] All ads checked:', checkedAds);
-          // Update background with checked ads
-          chrome.runtime.sendMessage({
-            action: 'UPDATE_DETECTED_ADS',
-            ads: checkedAds,
-          });
-          sendResponse({ ads: checkedAds });
-        }).catch((error) => {
-          console.error('[Content] Error checking ads:', error);
-          sendResponse({ ads: detectedAds, error: String(error) });
-        });
-        return true; // Will respond asynchronously
-      } else {
-        sendResponse({ ads: detectedAds });
-      }
-    } catch (error) {
-      console.error('[Content] Error scanning for ads:', error);
-      sendResponse({ ads: [], error: String(error) });
-    }
+       const detectedAds = detectAllAds();
+       console.log(`[Content] Found ${detectedAds.length} ads:`, detectedAds);
+       
+       // Send detected ads to background for storage
+       chrome.runtime.sendMessage({
+         action: 'UPDATE_DETECTED_ADS',
+         ads: detectedAds,
+       }).catch((error) => {
+         console.warn('[Content] Failed to update background with detected ads:', error);
+       });
+       
+       // Check each ad URL with the backend API
+       if (detectedAds.length > 0) {
+         checkAdsWithBackend(detectedAds)
+           .then((checkedAds) => {
+             console.log('[Content] All ads checked:', checkedAds);
+             // Update background with checked ads
+             chrome.runtime.sendMessage({
+               action: 'UPDATE_DETECTED_ADS',
+               ads: checkedAds,
+             }).catch((error) => {
+               console.warn('[Content] Failed to update background with checked ads:', error);
+             });
+             sendResponse({ ads: checkedAds });
+           })
+           .catch((error) => {
+             console.error('[Content] Error checking ads:', error);
+             // Return original ads even if checking failed
+             sendResponse({ 
+               ads: detectedAds, 
+               error: 'Failed to check ad security. Showing unscored results.',
+               originalError: String(error),
+             });
+           });
+         return true; // Will respond asynchronously
+       } else {
+         sendResponse({ ads: detectedAds });
+       }
+     } catch (error) {
+       console.error('[Content] Error scanning for ads:', error);
+       sendResponse({ 
+         ads: [], 
+         error: 'Failed to scan page for ads',
+         originalError: String(error),
+       });
+     }
   }
   return true;
 });
@@ -89,7 +104,7 @@ async function checkAdsWithBackend(ads: DetectedAd[]): Promise<DetectedAd[]> {
       console.log(`[Content] Checking URL for ad ${ad.id}: ${urlToCheck}`);
       
       const message: CheckUrlMessage = {
-        action: 'CHECK_URL' as any,
+        action: MessageAction.CHECK_URL,
         url: urlToCheck,
         adId: ad.id,
       };

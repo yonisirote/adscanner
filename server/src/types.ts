@@ -21,38 +21,36 @@ export interface HealthResponse {
   status: 'ok';
 }
 
-export interface UrlVoidResult {
+export interface VirusTotalResult {
   domain: string;
   detectionCount: number;
   enginesCount: number;
   scanDate: string;
   riskScore: number;
   details: {
-    ip?: string;
-    countryCode?: string;
-    domainAge?: string;
+    categories?: string[];
+    reputation?: number;
+    lastAnalysisDate?: string;
     engines?: { name: string; detected: boolean }[];
   };
 }
 
-export interface ScamadvisorResult {
+export interface GoogleSafeBrowsingResult {
   domain: string;
-  trustScore: number;
+  threatTypes: string[];
   riskScore: number;
   scanDate: string;
   details: {
-    countryCode?: string;
-    isPopular?: boolean;
-    hasSSL?: boolean;
-    domainAge?: string;
-    riskFactors?: string[];
+    platformTypes?: string[];
+    threatEntryTypes?: string[];
+    isSafe: boolean;
   };
 }
 
 export interface CachedCheck {
   domain: string;
-  urlvoidResult: UrlVoidResult | null;
-  scamadvisorResult: ScamadvisorResult | null;
+  virusTotalResult: VirusTotalResult | null;
+  googleSafeBrowsingResult: GoogleSafeBrowsingResult | null;
   combinedRiskScore: number;
   cachedAt: string;
   expiresAt: string;

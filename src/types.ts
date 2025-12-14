@@ -46,6 +46,7 @@ export enum MessageAction {
   CHECK_URL = 'CHECK_URL',
   SCAN_PAGE = 'SCAN_PAGE',
   GET_DETECTED_ADS = 'GET_DETECTED_ADS',
+  UPDATE_DETECTED_ADS = 'UPDATE_DETECTED_ADS',
 }
 
 export interface CheckUrlMessage {

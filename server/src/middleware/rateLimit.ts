@@ -28,8 +28,25 @@ export async function rateLimitMiddleware(c: Context, next: () => Promise<void>)
   entry.count++;
   store.set(clientIp, entry);
 
+  // Set rate limit headers
+  const remaining = Math.max(0, LIMIT - entry.count);
+  const resetIn = Math.ceil((entry.resetTime - now) / 1000);
+  
+  c.header('X-RateLimit-Limit', LIMIT.toString());
+  c.header('X-RateLimit-Remaining', remaining.toString());
+  c.header('X-RateLimit-Reset', entry.resetTime.toString());
+
   if (entry.count > LIMIT) {
-    return c.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    console.warn(`[rate-limit] Client ${clientIp} exceeded limit (${entry.count}/${LIMIT}), reset in ${resetIn}s`);
+    return c.json(
+      { 
+        error: 'Rate limit exceeded',
+        retryAfter: resetIn,
+        limit: LIMIT,
+        window: '1 minute',
+      }, 
+      { status: 429, headers: { 'Retry-After': resetIn.toString() } }
+    );
   }
 
   await next();

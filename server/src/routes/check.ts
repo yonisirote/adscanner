@@ -1,25 +1,44 @@
 import { Hono } from 'hono';
 import type { CheckRequest, CheckResponse } from '../types';
-import { checkUrl as checkUrlVoid } from '../services/urlvoid';
-import { checkUrl as checkUrlScamadvisor } from '../services/scamadvisor';
+import { checkUrl as checkVirusTotal } from '../services/virusTotal';
+import { checkUrl as checkGoogleSafeBrowsing } from '../services/googleSafeBrowsing';
 import { ApiError } from '../services/errors';
 import { getCachedResult, setCachedResult } from '../services/cache';
-import { buildUrlVoidSource, buildScamadvisorSource } from '../utils/sources';
+import { buildVirusTotalSource, buildGoogleSafeBrowsingSource } from '../utils/sources';
 
 /**
  * POST /api/check
  * Body: { url: string }
  * Response: CheckResponse (see src/types.ts)
  *
- * Validates URL, queries URLVoid and Scamadvisor APIs (or mock if no API keys).
+ * Validates URL, queries VirusTotal and Google Safe Browsing APIs (or mock if no API keys).
  * Caches results for 24 hours. Returns risk score and detailed source data.
  */
 
 const router = new Hono();
 
+const MAX_URL_LENGTH = 2048; // Respect browser URL length limits
+
+/**
+ * Validate URL format and length
+ * @param urlString URL to validate
+ * @returns true if valid, false otherwise
+ */
 function isValidUrl(urlString: string): boolean {
+  // Check length
+  if (!urlString || urlString.length > MAX_URL_LENGTH) {
+    return false;
+  }
+
+  // Check format
   try {
-    new URL(urlString);
+    const url = new URL(urlString);
+    
+    // Ensure protocol is http or https
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return false;
+    }
+    
     return true;
   } catch {
     return false;
@@ -50,8 +69,15 @@ router.post('/', async (c) => {
   }
 
   if (!isValidUrl(body.url)) {
+    const errorMsg = !body.url || body.url.length > MAX_URL_LENGTH 
+      ? `Invalid URL length (max ${MAX_URL_LENGTH} characters)`
+      : 'Invalid URL format (must be http:// or https://)';
+    
     return c.json(
-      { error: 'Invalid URL format' },
+      { 
+        error: errorMsg,
+        type: 'ValidationError',
+      },
       { status: 400 }
     );
   }
@@ -65,17 +91,17 @@ router.post('/', async (c) => {
       const sources: CheckResponse['sources'] = [];
       const scores: number[] = [];
 
-      const urlvoidSource = buildUrlVoidSource(cached.urlvoidResult);
-      const scamadvisorSource = buildScamadvisorSource(cached.scamadvisorResult);
+      const virusTotalSource = buildVirusTotalSource(cached.virusTotalResult);
+      const safeBrowsingSource = buildGoogleSafeBrowsingSource(cached.googleSafeBrowsingResult);
 
-      sources.push(urlvoidSource);
-      sources.push(scamadvisorSource);
+      sources.push(virusTotalSource);
+      sources.push(safeBrowsingSource);
 
-      if (cached.urlvoidResult) {
-        scores.push(cached.urlvoidResult.riskScore);
+      if (cached.virusTotalResult) {
+        scores.push(cached.virusTotalResult.riskScore);
       }
-      if (cached.scamadvisorResult) {
-        scores.push(cached.scamadvisorResult.riskScore);
+      if (cached.googleSafeBrowsingResult) {
+        scores.push(cached.googleSafeBrowsingResult.riskScore);
       }
 
       const riskScore = scores.reduce((a, b) => a + b, 0) / scores.length;
@@ -96,39 +122,39 @@ router.post('/', async (c) => {
       return c.json(response);
     }
 
-    const [urlVoidSettled, scamadvisorSettled] = await Promise.allSettled([
-      checkUrlVoid(body.url),
-      checkUrlScamadvisor(body.url),
+    const [virusTotalSettled, safeBrowsingSettled] = await Promise.allSettled([
+      checkVirusTotal(body.url),
+      checkGoogleSafeBrowsing(body.url),
     ]);
 
-    const urlVoidResult = urlVoidSettled.status === 'fulfilled' ? urlVoidSettled.value : null;
-    const scamadvisorResult = scamadvisorSettled.status === 'fulfilled' ? scamadvisorSettled.value : null;
+    const virusTotalResult = virusTotalSettled.status === 'fulfilled' ? virusTotalSettled.value : null;
+    const safeBrowsingResult = safeBrowsingSettled.status === 'fulfilled' ? safeBrowsingSettled.value : null;
 
-    if (!urlVoidResult && !scamadvisorResult) {
+    if (!virusTotalResult && !safeBrowsingResult) {
       return c.json({ error: 'All reputation sources failed' }, { status: 502 });
     }
 
     const sources: CheckResponse['sources'] = [];
     const scores: number[] = [];
 
-    const urlvoidSource = buildUrlVoidSource(urlVoidResult);
-    const scamadvisorSource = buildScamadvisorSource(scamadvisorResult);
+    const virusTotalSource = buildVirusTotalSource(virusTotalResult);
+    const safeBrowsingSource = buildGoogleSafeBrowsingSource(safeBrowsingResult);
 
-    sources.push(urlvoidSource);
-    sources.push(scamadvisorSource);
+    sources.push(virusTotalSource);
+    sources.push(safeBrowsingSource);
 
-    if (urlVoidResult) {
-      scores.push(urlVoidResult.riskScore);
+    if (virusTotalResult) {
+      scores.push(virusTotalResult.riskScore);
     }
-    if (scamadvisorResult) {
-      scores.push(scamadvisorResult.riskScore);
+    if (safeBrowsingResult) {
+      scores.push(safeBrowsingResult.riskScore);
     }
 
     const riskScore = scores.reduce((a, b) => a + b, 0) / scores.length;
     const riskLevel = getRiskLevel(riskScore);
 
     // Cache the result
-    await setCachedResult(body.url, urlVoidResult, scamadvisorResult, riskScore);
+    await setCachedResult(body.url, virusTotalResult, safeBrowsingResult, riskScore);
 
     const duration = Date.now() - startTime;
     console.log(`[check] ${body.url} - cache miss (${duration}ms)`);
@@ -144,13 +170,29 @@ router.post('/', async (c) => {
 
     return c.json(response);
   } catch (error) {
-    console.error('Check error:', error);
+    console.error('[check] Error:', error);
 
     if (error instanceof ApiError) {
-      return c.json({ error: error.message }, { status: error.statusCode as 400 | 404 | 429 | 500 });
+      const statusCode = error.statusCode as 400 | 404 | 429 | 500;
+      const errorResponse: any = { 
+        error: error.message,
+        type: error.name,
+      };
+      
+      // Add retry info for rate limits
+      if (statusCode === 429) {
+        console.warn('[check] API rate limit hit for URL:', body.url);
+        errorResponse.retryAfter = 60; // Default retry after 1 minute
+        errorResponse.hint = 'Upstream API rate limited. Try again in 60 seconds.';
+      }
+      
+      return c.json(errorResponse, { status: statusCode });
     }
 
-    return c.json({ error: 'Failed to check URL' }, { status: 500 });
+    return c.json({ 
+      error: 'Failed to check URL',
+      type: 'InternalServerError',
+    }, { status: 500 });
   }
 });
 

@@ -52,6 +52,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
   }
 
+  // Handle UPDATE_DETECTED_ADS messages
+  if (request.action === 'UPDATE_DETECTED_ADS' && sender.tab?.id) {
+    detectedAdsByTab.set(sender.tab.id, request.ads || []);
+    sendResponse({ success: true });
+    return false;
+  }
+
   sendResponse({ status: 'acknowledged' });
   return false;
 });
@@ -91,13 +98,4 @@ async function handleCheckUrl(message: CheckUrlMessage, tabId?: number): Promise
     throw error;
   }
 }
-
-// Update detected ads from content script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'UPDATE_DETECTED_ADS' && sender.tab?.id) {
-    detectedAdsByTab.set(sender.tab.id, request.ads || []);
-    sendResponse({ success: true });
-    return false;
-  }
-});
 
