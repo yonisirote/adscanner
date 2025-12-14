@@ -19,7 +19,7 @@ export function findAdIframes(): DetectedAd[] {
 
   iframes.forEach((iframe) => {
     const src = iframe.src || iframe.getAttribute('data-src') || '';
-    
+
     if (src && isAdDomain(src)) {
       const { rawUrl, extractedUrl } = extractFinalUrl(iframe);
       ads.push({
@@ -49,7 +49,7 @@ export function findAdScripts(): DetectedAd[] {
 
   scripts.forEach((script) => {
     const src = script.src || '';
-    
+
     if (src && isAdDomain(src)) {
       const extracted = parseTrackingUrl(src);
       ads.push({
@@ -80,17 +80,22 @@ export function findAdLinks(): DetectedAd[] {
     const text = (link.textContent || '').toLowerCase();
     const title = (link.title || '').toLowerCase();
     const className = (link.className || '').toLowerCase();
-    
+
+    // Patterns for matching standalone "ad" word (avoid false positives like "add", "adobe")
+    const standaloneAdPattern = /\bad\b/i;
+
     // Check for sponsored/affiliate keywords
     const isSponsoredLink =
       text.includes('sponsored') ||
-      text.includes('ad') ||
+      standaloneAdPattern.test(text) ||  // Only match standalone "ad", not "add", "adobe", etc.
       title.includes('sponsored') ||
       title.includes('advertisement') ||
       className.includes('sponsored') ||
       className.includes('ad-') ||
+      className.includes('-ad') ||
       link.hasAttribute('data-sponsored') ||
-      link.hasAttribute('data-affiliate');
+      link.hasAttribute('data-affiliate') ||
+      link.hasAttribute('rel') && link.getAttribute('rel')?.includes('sponsored');
 
     if (isSponsoredLink && href) {
       const { rawUrl, extractedUrl } = extractFinalUrl(link);
@@ -115,7 +120,7 @@ export function findAdLinks(): DetectedAd[] {
  */
 export function findAdsByAttributes(): DetectedAd[] {
   const ads: DetectedAd[] = [];
-  
+
   const adSelectors = [
     '[class*="ad-"]',
     '[class*="ads"]',
@@ -133,7 +138,7 @@ export function findAdsByAttributes(): DetectedAd[] {
 
   adSelectors.forEach((selector) => {
     const elements = document.querySelectorAll(selector);
-    
+
     elements.forEach((el) => {
       // Skip if already detected as iframe or script
       if (el.tagName === 'IFRAME' || el.tagName === 'SCRIPT') {
@@ -142,7 +147,7 @@ export function findAdsByAttributes(): DetectedAd[] {
 
       const url = el.getAttribute('data-ad-url') || '';
       const network = el.getAttribute('data-ad-network') || '';
-      
+
       // Only add if it has some ad-related attributes
       if (url || network) {
         const { rawUrl, extractedUrl } = extractFinalUrl(el);
@@ -170,7 +175,7 @@ export function extractDestinationUrl(element: HTMLElement): string | undefined 
   if (element instanceof HTMLAnchorElement) {
     return element.href;
   }
-  
+
   if (element instanceof HTMLIFrameElement) {
     return element.src;
   }
