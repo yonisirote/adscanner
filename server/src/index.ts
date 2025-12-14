@@ -40,7 +40,7 @@ app.get('/health', (c) => {
 // Test endpoint for development - returns controlled risk scores
 app.post('/api/test-check', async (c) => {
   const { url } = await c.req.json();
-  
+
   if (!url) {
     return c.json({ error: 'URL is required' }, { status: 400 });
   }
@@ -50,7 +50,7 @@ app.post('/api/test-check', async (c) => {
   let riskLevel: 'safe' | 'low' | 'medium' | 'high' | 'dangerous' = 'safe';
 
   const urlLower = url.toLowerCase();
-  
+
   if (urlLower.includes('dangerous') || urlLower.includes('high-risk')) {
     riskScore = 85;
     riskLevel = 'dangerous';
@@ -83,13 +83,13 @@ app.post('/api/test-check', async (c) => {
     riskLevel,
     sources: [
       {
-        source: 'test-urlvoid',
-        score: riskScore * 0.3,
+        source: 'test-virustotal',
+        score: riskScore * 0.5,
         details: { mode: 'test' },
       },
       {
-        source: 'test-scamadvisor',
-        score: riskScore * 0.7,
+        source: 'test-safebrowsing',
+        score: riskScore * 0.5,
         details: { mode: 'test' },
       },
     ],

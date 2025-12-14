@@ -1,5 +1,6 @@
 import { checkUrl } from '../services/api';
-import type { CheckUrlMessage, CheckUrlResponse, GetDetectedAdsMessage, GetDetectedAdsResponse, DetectedAd, MessageAction } from '../types';
+import { MessageAction } from '../types';
+import type { CheckUrlMessage, CheckUrlResponse, GetDetectedAdsMessage, GetDetectedAdsResponse, DetectedAd } from '../types';
 
 // Background service worker
 console.log('[Background] Ad Scanner service worker loaded');
@@ -20,9 +21,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Background] Message received:', request);
 
   // Handle CHECK_URL messages
-  if (request.action === 'CHECK_URL') {
+  if (request.action === MessageAction.CHECK_URL) {
     const message = request as CheckUrlMessage;
-    
+
     // Use async handler for API call
     handleCheckUrl(message, sender.tab?.id)
       .then(sendResponse)
@@ -40,20 +41,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   // Handle GET_DETECTED_ADS messages
-  if (request.action === 'GET_DETECTED_ADS') {
+  if (request.action === MessageAction.GET_DETECTED_ADS) {
     const message = request as GetDetectedAdsMessage;
     const ads = detectedAdsByTab.get(message.tabId) || [];
-    
+
     sendResponse({
       success: true,
       ads: ads,
     } as GetDetectedAdsResponse);
-    
+
     return false;
   }
 
   // Handle UPDATE_DETECTED_ADS messages
-  if (request.action === 'UPDATE_DETECTED_ADS' && sender.tab?.id) {
+  if (request.action === MessageAction.UPDATE_DETECTED_ADS && sender.tab?.id) {
     detectedAdsByTab.set(sender.tab.id, request.ads || []);
     sendResponse({ success: true });
     return false;
@@ -73,7 +74,7 @@ async function handleCheckUrl(message: CheckUrlMessage, tabId?: number): Promise
     if (tabId !== undefined) {
       const ads = detectedAdsByTab.get(tabId) || [];
       const adIndex = ads.findIndex(ad => ad.id === message.adId);
-      
+
       if (adIndex !== -1) {
         ads[adIndex] = {
           ...ads[adIndex],
