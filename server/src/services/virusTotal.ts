@@ -1,7 +1,8 @@
 import type { VirusTotalResult } from '../types';
-import { RateLimitError } from './errors';
+import { RateLimitError, NetworkError, TimeoutError } from './errors';
 import { getConfig } from '../config';
 import { extractDomain } from '../utils/url';
+import { retryWithBackoff } from '../utils/retry';
 
 interface VirusTotalApiResponse {
   data?: {
@@ -50,7 +51,6 @@ function calculateRiskScore(detectionCount: number, enginesCount: number): numbe
  */
 export async function checkUrl(urlString: string): Promise<VirusTotalResult> {
   const config = getConfig();
-
   const domain = extractDomain(urlString);
 
   // If no API key, return mock data
@@ -67,34 +67,60 @@ export async function checkUrl(urlString: string): Promise<VirusTotalResult> {
 
     const apiUrl = `https://www.virustotal.com/api/v3/urls/${urlId}`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    // Perform validation with retries
+    const data = await retryWithBackoff<VirusTotalApiResponse>(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(apiUrl, {
-      signal: controller.signal,
-      headers: {
-        'x-apikey': config.virusTotalApiKey,
-      },
+      try {
+        const response = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: {
+            'x-apikey': config.virusTotalApiKey,
+          },
+        });
+
+        if (response.status === 429) {
+          throw new RateLimitError('VirusTotal API rate limit exceeded');
+        }
+
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+          throw new NetworkError(`VirusTotal server error: ${response.status}`);
+        }
+
+        if (response.status === 404) {
+          // Special case: 404 means URL not found in VT, treat as "no info" (safe-ish?)
+          // We return null to signal "not found" to the outer scope, which isn't an error
+          return { error: { code: 'NotFoundError', message: 'URL not found' } } as any;
+        }
+
+        if (!response.ok) {
+          throw new Error(`VirusTotal API error: ${response.statusText}`);
+        }
+
+        return (await response.json()) as VirusTotalApiResponse;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new TimeoutError('VirusTotal API timeout');
+        }
+        // Re-throw known errors directly
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }, {
+      retries: 2, // 3 attempts total
+      shouldRetry: (error) => {
+        // Retry on Network/Timeout/5xx, but NOT on RateLimit or Auth errors
+        return error instanceof NetworkError || error instanceof TimeoutError;
+      }
     });
 
-    clearTimeout(timeout);
-
-    if (response.status === 429) {
-      console.warn(`[VirusTotal] Rate limit exceeded for ${domain}`);
-      throw new RateLimitError('VirusTotal API rate limit exceeded');
-    }
-
-    if (response.status === 404) {
-      // URL not in database - submit it for scanning
+    // Handle special "Not Found" case from logic above
+    if (data.error?.code === 'NotFoundError') {
       console.log(`[VirusTotal] URL not found, would need to submit for scanning: ${domain}`);
       return getMockResult(domain);
     }
-
-    if (!response.ok) {
-      throw new Error(`VirusTotal API error: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as VirusTotalApiResponse;
 
     if (data.error) {
       if (data.error.code === 'AuthenticationRequiredError') {
@@ -150,14 +176,11 @@ export async function checkUrl(urlString: string): Promise<VirusTotalResult> {
     };
   } catch (error) {
     if (error instanceof RateLimitError) {
+      // Propagate rate limit errors to client
       throw error;
     }
 
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('[VirusTotal] API timeout');
-      return getMockResult(domain);
-    }
-
+    // Fallback to mock for other errors
     console.error('[VirusTotal] API error:', error);
     return getMockResult(domain);
   }
@@ -170,14 +193,14 @@ export async function checkUrl(urlString: string): Promise<VirusTotalResult> {
 function getMockResult(domain: string): VirusTotalResult {
   // Create deterministic but varied results based on domain
   const domainHash = domain.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  
+
   // High risk domains (for testing)
   const highRiskKeywords = ['ads', 'doubleclick', 'adserver', 'adnetwork', 'click', 'tracking', 'dangerous', 'risky'];
   const isHighRisk = highRiskKeywords.some(keyword => domain.includes(keyword));
-  
+
   let mockDetectionCount: number;
   let mockEnginesCount = 88;
-  
+
   if (isHighRisk) {
     // High risk: 30-70 detections
     mockDetectionCount = 30 + (domainHash % 40);
@@ -188,7 +211,7 @@ function getMockResult(domain: string): VirusTotalResult {
     // Low/safe: 0-10 detections
     mockDetectionCount = domainHash % 11;
   }
-  
+
   const riskScore = calculateRiskScore(mockDetectionCount, mockEnginesCount);
 
   console.log(`[VirusTotal Mock] ${domain} -> ${mockDetectionCount}/${mockEnginesCount} detections (score: ${riskScore.toFixed(1)})`);

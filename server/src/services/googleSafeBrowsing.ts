@@ -1,7 +1,8 @@
 import type { GoogleSafeBrowsingResult } from '../types';
-import { RateLimitError } from './errors';
+import { RateLimitError, NetworkError, TimeoutError } from './errors';
 import { getConfig } from '../config';
 import { extractDomain } from '../utils/url';
+import { retryWithBackoff } from '../utils/retry';
 
 interface SafeBrowsingApiResponse {
   matches?: Array<{
@@ -31,7 +32,6 @@ function invertTrustToRiskScore(trustScore: number): number {
  */
 export async function checkUrl(urlString: string): Promise<GoogleSafeBrowsingResult> {
   const config = getConfig();
-
   const domain = extractDomain(urlString);
 
   if (!config.googleSafeBrowsingApiKey) {
@@ -54,30 +54,47 @@ export async function checkUrl(urlString: string): Promise<GoogleSafeBrowsingRes
       },
     };
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const data = await retryWithBackoff<SafeBrowsingApiResponse>(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (response.status === 429) {
+          throw new RateLimitError('Google Safe Browsing API rate limit exceeded');
+        }
+
+        if (response.status >= 500) {
+          throw new NetworkError(`Safe Browsing server error: ${response.status}`);
+        }
+
+        if (!response.ok) {
+          throw new Error(`Safe Browsing API error: ${response.statusText}`);
+        }
+
+        return (await response.json()) as SafeBrowsingApiResponse;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new TimeoutError('Safe Browsing API timeout');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }, {
+      retries: 2,
+      shouldRetry: (error) => {
+        return error instanceof NetworkError || error instanceof TimeoutError;
+      }
     });
-
-    clearTimeout(timeout);
-
-    if (response.status === 429) {
-      console.warn(`[Safe Browsing] Rate limit exceeded for ${domain}`);
-      throw new RateLimitError('Google Safe Browsing API rate limit exceeded');
-    }
-
-    if (!response.ok) {
-      throw new Error(`Safe Browsing API error: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as SafeBrowsingApiResponse;
 
     // If matches array exists and has entries, URL is flagged as dangerous
     const matches = data.matches || [];
@@ -93,7 +110,7 @@ export async function checkUrl(urlString: string): Promise<GoogleSafeBrowsingRes
       // Threats found - low trust based on severity
       const threatTypes = matches.map(m => m.threatType);
       riskFactors = threatTypes;
-      
+
       if (threatTypes.includes('MALWARE')) {
         trustScore = 10; // Very dangerous
       } else if (threatTypes.includes('SOCIAL_ENGINEERING')) {
@@ -125,11 +142,7 @@ export async function checkUrl(urlString: string): Promise<GoogleSafeBrowsingRes
       throw error;
     }
 
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('[Safe Browsing] API timeout');
-      return getMockResult(domain);
-    }
-
+    // Fallback to mock for other errors
     console.error('[Safe Browsing] API error:', error);
     return getMockResult(domain);
   }
@@ -142,14 +155,14 @@ export async function checkUrl(urlString: string): Promise<GoogleSafeBrowsingRes
 function getMockResult(domain: string): GoogleSafeBrowsingResult {
   // Create deterministic results based on domain
   const domainHash = domain.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  
+
   // High risk domains (for testing)
   const highRiskKeywords = ['ads', 'doubleclick', 'adserver', 'adnetwork', 'click', 'tracking', 'dangerous', 'risky'];
   const isHighRisk = highRiskKeywords.some(keyword => domain.includes(keyword));
-  
+
   let trustScore: number;
   let riskFactors: string[] | undefined;
-  
+
   if (isHighRisk) {
     // High risk: low trust (10-30)
     trustScore = 10 + (domainHash % 20);
@@ -163,7 +176,7 @@ function getMockResult(domain: string): GoogleSafeBrowsingResult {
     trustScore = 70 + (domainHash % 25);
     riskFactors = undefined;
   }
-  
+
   const riskScore = invertTrustToRiskScore(trustScore);
 
   console.log(`[Safe Browsing Mock] ${domain} -> trust: ${trustScore}, risk: ${riskScore.toFixed(1)}`);

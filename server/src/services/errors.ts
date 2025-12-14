@@ -28,3 +28,17 @@ export class NotFoundError extends ApiError {
     this.name = 'NotFoundError';
   }
 }
+
+export class NetworkError extends ApiError {
+  constructor(message: string = 'Network error occurred') {
+    super(502, message);
+    this.name = 'NetworkError';
+  }
+}
+
+export class TimeoutError extends ApiError {
+  constructor(message: string = 'Request timed out') {
+    super(504, message);
+    this.name = 'TimeoutError';
+  }
+}

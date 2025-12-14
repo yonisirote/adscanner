@@ -30,6 +30,11 @@ const configs: esbuild.BuildOptions[] = [
     entryPoints: ['src/popup/popup.ts'],
     outfile: 'dist/popup.js',
   },
+  {
+    ...baseConfig,
+    entryPoints: ['src/options/options.ts'],
+    outfile: 'dist/options.js',
+  },
 ];
 
 async function build() {
@@ -46,6 +51,17 @@ async function build() {
     // Copy popup.html to dist
     fs.copyFileSync('src/popup/popup.html', 'dist/popup.html');
     console.log('✓ Copied popup.html to dist/');
+
+    // Copy options files to dist
+    if (fs.existsSync('src/options/options.html')) {
+      fs.copyFileSync('src/options/options.html', 'dist/options.html');
+      console.log('✓ Copied options.html to dist/');
+    }
+    if (fs.existsSync('src/options/options.css')) {
+      fs.copyFileSync('src/options/options.css', 'dist/options.css');
+      console.log('✓ Copied options.css to dist/');
+    }
+
 
     // Build all scripts
     for (const config of configs) {

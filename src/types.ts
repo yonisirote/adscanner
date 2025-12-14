@@ -25,6 +25,12 @@ export interface DetectedAd {
   isChecking?: boolean;      // true while API call is in progress
 }
 
+export interface UserSettings {
+  apiBaseUrl: string;
+  riskSensitivity: 'low' | 'medium' | 'high'; // low = strict, high = lenient
+  whitelistedDomains: string[];
+}
+
 // API Response Types (from backend)
 export interface SourceResult {
   source: string;

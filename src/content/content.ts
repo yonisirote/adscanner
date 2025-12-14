@@ -3,6 +3,8 @@ import { injectStyles, addOverlay, removeAllBadges } from './adOverlay';
 import { MessageAction } from '../types';
 import type { DetectedAd, CheckUrlMessage, CheckUrlResponse } from '../types';
 
+import { isWhitelisted } from '../services/storage';
+
 // Content script
 console.log('[Content] Ad Scanner content script loaded on', window.location.href);
 
@@ -26,59 +28,74 @@ chrome.runtime.sendMessage(
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('[Content] Message from popup:', request);
   if (request.type === 'SCAN') {
-    console.log('[Content] Scanning page for ads...');
+    // Handle async scan
+    (async () => {
+      console.log('[Content] Scanning page for ads...');
 
-    // Clean up previous overlays
-    removeAllBadges();
-    adElementMap.clear();
-
-    try {
-      const detectedAds = detectAllAds();
-      console.log(`[Content] Found ${detectedAds.length} ads:`, detectedAds);
-
-      // Send detected ads to background for storage
-      chrome.runtime.sendMessage({
-        action: 'UPDATE_DETECTED_ADS',
-        ads: detectedAds,
-      }).catch((error) => {
-        console.warn('[Content] Failed to update background with detected ads:', error);
-      });
-
-      // Check each ad URL with the backend API
-      if (detectedAds.length > 0) {
-        checkAdsWithBackend(detectedAds)
-          .then((checkedAds) => {
-            console.log('[Content] All ads checked:', checkedAds);
-            // Update background with checked ads
-            chrome.runtime.sendMessage({
-              action: 'UPDATE_DETECTED_ADS',
-              ads: checkedAds,
-            }).catch((error) => {
-              console.warn('[Content] Failed to update background with checked ads:', error);
-            });
-            sendResponse({ ads: checkedAds });
-          })
-          .catch((error) => {
-            console.error('[Content] Error checking ads:', error);
-            // Return original ads even if checking failed
-            sendResponse({
-              ads: detectedAds,
-              error: 'Failed to check ad security. Showing unscored results.',
-              originalError: String(error),
-            });
-          });
-        return true; // Will respond asynchronously
-      } else {
-        sendResponse({ ads: detectedAds });
+      if (await isWhitelisted(window.location.href)) {
+        console.log('[Content] Page is whitelisted. Skipping scan.');
+        sendResponse({
+          ads: [],
+          error: 'This site is whitelisted in settings.',
+          errorType: 'client_error'
+        });
+        return;
       }
-    } catch (error) {
-      console.error('[Content] Error scanning for ads:', error);
-      sendResponse({
-        ads: [],
-        error: 'Failed to scan page for ads',
-        originalError: String(error),
-      });
-    }
+
+      // Clean up previous overlays
+
+      removeAllBadges();
+      adElementMap.clear();
+
+      try {
+        const detectedAds = detectAllAds();
+        console.log(`[Content] Found ${detectedAds.length} ads:`, detectedAds);
+
+        // Send detected ads to background for storage
+        chrome.runtime.sendMessage({
+          action: 'UPDATE_DETECTED_ADS',
+          ads: detectedAds,
+        }).catch((error) => {
+          console.warn('[Content] Failed to update background with detected ads:', error);
+        });
+
+        // Check each ad URL with the backend API
+        if (detectedAds.length > 0) {
+          checkAdsWithBackend(detectedAds)
+            .then((checkedAds) => {
+              console.log('[Content] All ads checked:', checkedAds);
+              // Update background with checked ads
+              chrome.runtime.sendMessage({
+                action: 'UPDATE_DETECTED_ADS',
+                ads: checkedAds,
+              }).catch((error) => {
+                console.warn('[Content] Failed to update background with checked ads:', error);
+              });
+              sendResponse({ ads: checkedAds });
+            })
+            .catch((error) => {
+              console.error('[Content] Error checking ads:', error);
+              // Return original ads even if checking failed
+              sendResponse({
+                ads: detectedAds,
+                error: 'Failed to check ad security. Showing unscored results.',
+                originalError: String(error),
+              });
+            });
+          return true; // Will respond asynchronously
+        } else {
+          sendResponse({ ads: detectedAds });
+        }
+      } catch (error) {
+        console.error('[Content] Error scanning for ads:', error);
+        sendResponse({
+          ads: [],
+          error: 'Failed to scan page for ads',
+          originalError: String(error),
+        });
+      }
+    })();
+    return true;
   }
   return true;
 });

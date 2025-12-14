@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Scanner Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Ad Scanner Settings</h1>
+        </header>
+
+        <main>
+            <section class="card">
+                <h2>API Configuration</h2>
+                <div class="form-group">
+                    <label for="apiBaseUrl">Backend API URL</label>
+                    <input type="url" id="apiBaseUrl" placeholder="http://localhost:3002">
+                    <p class="help-text">URL of your running Ad Scanner backend server</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Scanning Preferences</h2>
+                <div class="form-group">
+                    <label>Risk Sensitivity</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="riskSensitivity" value="low">
+                            <span class="radio-custom"></span>
+                            <div class="radio-text">
+                                <span class="radio-title">Strict (Low)</span>
+                                <span class="radio-desc">Flag all suspicious elements, may include false
+                                    positives</span>
+                            </div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="riskSensitivity" value="medium">
+                            <span class="radio-custom"></span>
+                            <div class="radio-text">
+                                <span class="radio-title">Balanced (Medium)</span>
+                                <span class="radio-desc">Recommended for most users</span>
+                            </div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="riskSensitivity" value="high">
+                            <span class="radio-custom"></span>
+                            <div class="radio-text">
+                                <span class="radio-title">Lenient (High)</span>
+                                <span class="radio-desc">Only flag clearly dangerous content</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Whitelist</h2>
+                <div class="form-group">
+                    <label for="whitelistedDomains">Allowed Domains (one per line)</label>
+                    <textarea id="whitelistedDomains" rows="5"
+                        placeholder="example.com&#10;trusted-site.org"></textarea>
+                    <p class="help-text">Ads on these domains will not be scanned for threats</p>
+                </div>
+            </section>
+
+            <div class="actions">
+                <div id="status" class="status"></div>
+                <button id="saveBtn" class="primary-btn">Save Settings</button>
+            </div>
+        </main>
+    </div>
+    <script src="options.js"></script>
+</body>
+
+</html>

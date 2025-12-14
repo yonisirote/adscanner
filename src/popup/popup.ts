@@ -1,4 +1,5 @@
-import type { DetectedAd, GetDetectedAdsMessage, GetDetectedAdsResponse, MessageAction } from '../types';
+import { MessageAction } from '../types';
+import type { DetectedAd, GetDetectedAdsMessage, GetDetectedAdsResponse } from '../types';
 
 // Popup script
 console.log('[Popup] Ad Scanner popup loaded');
@@ -67,11 +68,11 @@ function getRiskBadge(ad: DetectedAd): string {
   if (ad.isChecking) {
     return '<span class="risk-badge checking">Checking...</span>';
   }
-  
+
   if (!ad.riskLevel) {
     return '<span class="risk-badge" style="background: #f5f5f5; color: #999;">Not Checked</span>';
   }
-  
+
   return `<span class="risk-badge ${ad.riskLevel}">${ad.riskLevel}</span>`;
 }
 
@@ -79,9 +80,9 @@ function getRiskBadge(ad: DetectedAd): string {
  * Count risky ads (medium, high, dangerous)
  */
 function countRiskyAds(ads: DetectedAd[]): number {
-  return ads.filter(ad => 
-    ad.riskLevel === 'medium' || 
-    ad.riskLevel === 'high' || 
+  return ads.filter(ad =>
+    ad.riskLevel === 'medium' ||
+    ad.riskLevel === 'high' ||
     ad.riskLevel === 'dangerous'
   ).length;
 }
@@ -95,6 +96,94 @@ function updateStats(ads: DetectedAd[]) {
   }
   if (riskyCountSpan) {
     riskyCountSpan.textContent = countRiskyAds(ads).toString();
+  }
+}
+
+/**
+ * Error type hints for user guidance
+ */
+interface ErrorInfo {
+  icon: string;
+  message: string;
+  hint: string;
+  retryable: boolean;
+}
+
+/**
+ * Get error display info based on error type
+ */
+function getErrorInfo(errorType?: string, errorMessage?: string): ErrorInfo {
+  switch (errorType) {
+    case 'network':
+      return {
+        icon: '🔌',
+        message: 'Unable to connect to server',
+        hint: 'Please ensure the backend server is running (cd server && bun run src/index.ts)',
+        retryable: true,
+      };
+    case 'timeout':
+      return {
+        icon: '⏱️',
+        message: 'Request timed out',
+        hint: 'The server may be busy. Please try again in a few seconds.',
+        retryable: true,
+      };
+    case 'rate_limit':
+      return {
+        icon: '🚫',
+        message: 'Rate limit exceeded',
+        hint: 'Too many requests. Please wait a moment before trying again.',
+        retryable: true,
+      };
+    case 'server_error':
+      return {
+        icon: '⚠️',
+        message: 'Server error',
+        hint: 'The server encountered an error. Please try again.',
+        retryable: true,
+      };
+    case 'client_error':
+      return {
+        icon: '❌',
+        message: errorMessage || 'Request failed',
+        hint: 'There was an issue with the request.',
+        retryable: false,
+      };
+    default:
+      return {
+        icon: '❓',
+        message: errorMessage || 'An error occurred',
+        hint: 'Please try again. If the problem persists, check the console for details.',
+        retryable: true,
+      };
+  }
+}
+
+/**
+ * Display error state in results
+ */
+function displayError(errorInfo: ErrorInfo): void {
+  if (!resultsDiv) return;
+
+  const retryBtn = errorInfo.retryable
+    ? '<button class="retry-btn" id="retryBtn">Try Again</button>'
+    : '';
+
+  resultsDiv.innerHTML = `
+    <div class="error-state">
+      <div class="error-icon">${errorInfo.icon}</div>
+      <div class="error-message">${errorInfo.message}</div>
+      <div class="error-hint">${errorInfo.hint}</div>
+      ${retryBtn}
+    </div>
+  `;
+
+  // Attach retry handler
+  if (errorInfo.retryable) {
+    const retryButton = document.getElementById('retryBtn');
+    retryButton?.addEventListener('click', () => {
+      scanBtn?.click();
+    });
   }
 }
 
@@ -117,12 +206,12 @@ function displayAds(ads: DetectedAd[]) {
   }
 
   let html = '';
-  
+
   ads.forEach((ad) => {
     const unwrapped = wasUrlUnwrapped(ad.rawDestinationUrl, ad.extractedUrl);
     const displayUrl = ad.extractedUrl || ad.destinationUrl || ad.sourceUrl;
     const riskClass = ad.riskLevel ? `risk-${ad.riskLevel}` : '';
-    
+
     html += `
       <div class="ad-item ${riskClass}">
         <div class="ad-header">
@@ -177,7 +266,7 @@ async function loadDetectedAds() {
     if (response.success) {
       console.log('[Popup] Loaded ads:', response.ads);
       displayAds(response.ads);
-      
+
       if (response.ads.length > 0 && statusDiv) {
         statusDiv.textContent = `Found ${response.ads.length} ad${response.ads.length !== 1 ? 's' : ''}`;
       }
@@ -190,49 +279,60 @@ async function loadDetectedAds() {
 }
 
 /**
- * Scan page button handler
+ * Function to run the scan logic
  */
-if (scanBtn && statusDiv) {
-  scanBtn.addEventListener('click', async () => {
-    console.log('[Popup] Scan button clicked');
+async function runScan() {
+  console.log('[Popup] Scan button clicked');
+  if (statusDiv) {
     statusDiv.textContent = 'Scanning page...';
+  }
+  if (scanBtn) {
     scanBtn.disabled = true;
-    
-    if (resultsDiv) {
-      resultsDiv.innerHTML = '';
-    }
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (tab.id) {
+      // Check for supported protocol
+      if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) {
+        if (statusDiv) {
+          statusDiv.textContent = 'Please open a website to scan (http/https).';
+        }
+        scanBtn.disabled = false;
+        return;
+      }
+
       currentTabId = tab.id;
-      
+
       chrome.tabs.sendMessage(
         tab.id,
         { type: 'SCAN' },
         (response) => {
           scanBtn.disabled = false;
-          
+
           if (chrome.runtime.lastError) {
             console.error('[Popup] Error:', chrome.runtime.lastError);
-            statusDiv.textContent = 'Error: Could not connect to page';
+            if (statusDiv) statusDiv.textContent = 'Error: Could not connect to page';
             return;
           }
-          
+
           console.log('[Popup] Scan response:', response);
-          
+
           if (response?.error) {
-            statusDiv.textContent = `Error: ${response.error}`;
-            if (resultsDiv) {
-              resultsDiv.innerHTML = '';
+            // Get error info based on error type from response
+            const errorInfo = getErrorInfo(response.errorType, response.error);
+            if (statusDiv) {
+              statusDiv.textContent = 'Scan failed';
             }
+            displayError(errorInfo);
           } else {
             const ads: DetectedAd[] = response?.ads || [];
-            statusDiv.textContent = ads.length
-              ? `Found ${ads.length} ad${ads.length !== 1 ? 's' : ''}`
-              : 'No ads found';
+            if (statusDiv) {
+              statusDiv.textContent = ads.length
+                ? `Found ${ads.length} ad${ads.length !== 1 ? 's' : ''}`
+                : 'No ads found';
+            }
             displayAds(ads);
-            
+
             // Poll for updates while ads are being checked
             if (ads.some(ad => ad.isChecking)) {
               pollForUpdates();
@@ -241,7 +341,7 @@ if (scanBtn && statusDiv) {
         }
       );
     }
-  });
+  }
 }
 
 /**
@@ -255,16 +355,16 @@ function pollForUpdates() {
     }
 
     try {
-       const message: GetDetectedAdsMessage = {
-         action: MessageAction.GET_DETECTED_ADS,
-         tabId: currentTabId,
-       };
+      const message: GetDetectedAdsMessage = {
+        action: MessageAction.GET_DETECTED_ADS,
+        tabId: currentTabId,
+      };
 
       const response = await chrome.runtime.sendMessage(message) as GetDetectedAdsResponse;
 
       if (response.success) {
         displayAds(response.ads);
-        
+
         // Stop polling when all checks are complete
         if (!response.ads.some(ad => ad.isChecking)) {
           clearInterval(interval);
@@ -279,3 +379,23 @@ function pollForUpdates() {
   // Stop after 30 seconds max
   setTimeout(() => clearInterval(interval), 30000);
 }
+
+// Attach event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const settingsBtn = document.getElementById('settingsBtn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      if (chrome.runtime.openOptionsPage) {
+        chrome.runtime.openOptionsPage();
+      } else {
+        window.open(chrome.runtime.getURL('options.html'));
+      }
+    });
+  }
+
+  if (scanBtn) {
+    scanBtn.addEventListener('click', () => {
+      runScan();
+    });
+  }
+});

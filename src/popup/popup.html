@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             width: 450px;
             min-height: 300px;
@@ -19,38 +20,70 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #333;
         }
-        
+
         .header {
             background: white;
             padding: 16px 20px;
             border-bottom: 1px solid #e0e0e0;
         }
-        
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: auto;
+            margin: 0;
+            box-shadow: none;
+            color: #667eea;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f0f0f0;
+            transform: rotate(30deg);
+            box-shadow: none;
+        }
+
+
         h1 {
             font-size: 20px;
             color: #667eea;
-            margin-bottom: 8px;
             font-weight: 600;
         }
-        
+
         .stats {
             display: flex;
             gap: 16px;
             font-size: 13px;
             color: #666;
         }
-        
+
         .stat-item {
             display: flex;
             align-items: center;
             gap: 4px;
         }
-        
+
         .stat-count {
             font-weight: 600;
             color: #333;
         }
-        
+
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -65,27 +98,27 @@
             transition: transform 0.1s, box-shadow 0.2s;
             box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
-        
+
         button:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
-        
+
         button:active {
             transform: translateY(0);
         }
-        
+
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
-        
+
         .content {
             background: white;
             max-height: 500px;
             overflow-y: auto;
         }
-        
+
         #status {
             padding: 12px 20px;
             font-size: 13px;
@@ -93,23 +126,23 @@
             text-align: center;
             border-bottom: 1px solid #f0f0f0;
         }
-        
+
         #results {
             padding: 12px 20px;
         }
-        
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: #999;
         }
-        
+
         .empty-state-icon {
             font-size: 48px;
             margin-bottom: 12px;
             opacity: 0.5;
         }
-        
+
         .ad-item {
             background: #fafafa;
             border-radius: 8px;
@@ -118,24 +151,38 @@
             border-left: 4px solid #ddd;
             transition: transform 0.1s;
         }
-        
+
         .ad-item:hover {
             transform: translateX(2px);
         }
-        
-        .ad-item.risk-safe { border-left-color: #4CAF50; }
-        .ad-item.risk-low { border-left-color: #8BC34A; }
-        .ad-item.risk-medium { border-left-color: #FF9800; }
-        .ad-item.risk-high { border-left-color: #FF5722; }
-        .ad-item.risk-dangerous { border-left-color: #F44336; }
-        
+
+        .ad-item.risk-safe {
+            border-left-color: #4CAF50;
+        }
+
+        .ad-item.risk-low {
+            border-left-color: #8BC34A;
+        }
+
+        .ad-item.risk-medium {
+            border-left-color: #FF9800;
+        }
+
+        .ad-item.risk-high {
+            border-left-color: #FF5722;
+        }
+
+        .ad-item.risk-dangerous {
+            border-left-color: #F44336;
+        }
+
         .ad-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 8px;
         }
-        
+
         .ad-type {
             display: flex;
             align-items: center;
@@ -144,7 +191,7 @@
             font-size: 13px;
             color: #333;
         }
-        
+
         .ad-network {
             font-size: 11px;
             background: #667eea;
@@ -153,7 +200,7 @@
             border-radius: 12px;
             font-weight: 500;
         }
-        
+
         .risk-badge {
             font-size: 11px;
             padding: 4px 10px;
@@ -162,14 +209,37 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
-        .risk-badge.safe { background: #E8F5E9; color: #2E7D32; }
-        .risk-badge.low { background: #F1F8E9; color: #558B2F; }
-        .risk-badge.medium { background: #FFF3E0; color: #E65100; }
-        .risk-badge.high { background: #FFE0B2; color: #D84315; }
-        .risk-badge.dangerous { background: #FFEBEE; color: #C62828; }
-        .risk-badge.checking { background: #E3F2FD; color: #1976D2; }
-        
+
+        .risk-badge.safe {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .risk-badge.low {
+            background: #F1F8E9;
+            color: #558B2F;
+        }
+
+        .risk-badge.medium {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+
+        .risk-badge.high {
+            background: #FFE0B2;
+            color: #D84315;
+        }
+
+        .risk-badge.dangerous {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .risk-badge.checking {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+
         .ad-url {
             font-size: 12px;
             color: #666;
@@ -177,7 +247,7 @@
             line-height: 1.4;
             margin-bottom: 4px;
         }
-        
+
         .ad-destination {
             font-size: 11px;
             color: #999;
@@ -188,7 +258,7 @@
             padding-top: 6px;
             border-top: 1px solid #e0e0e0;
         }
-        
+
         .unwrapped-badge {
             background: #E3F2FD;
             color: #1976D2;
@@ -197,34 +267,75 @@
             font-size: 10px;
             font-weight: 500;
         }
-        
+
         .risk-score {
             font-size: 11px;
             color: #666;
             margin-top: 4px;
         }
-        
+
+        /* Error state styles */
+        .error-state {
+            text-align: center;
+            padding: 32px 20px;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .error-message {
+            font-size: 14px;
+            color: #D32F2F;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .error-hint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+
+        .retry-btn {
+            background: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
+            font-size: 12px;
+            padding: 8px 16px;
+            margin-top: 8px;
+            width: auto;
+            display: inline-block;
+        }
+
+        .retry-btn:hover {
+            box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+        }
+
         ::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         ::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
-        
+
         ::-webkit-scrollbar-thumb {
             background: #bbb;
             border-radius: 4px;
         }
-        
+
         ::-webkit-scrollbar-thumb:hover {
             background: #999;
         }
     </style>
 </head>
+
 <body>
     <div class="header">
-        <h1>🛡️ Ad Scanner</h1>
+        <div class="header-top">
+            <h1>🛡️ Ad Scanner</h1>
+            <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+        </div>
         <div class="stats">
             <div class="stat-item">
                 <span>Ads:</span>
@@ -243,4 +354,5 @@
     </div>
     <script src="popup.js"></script>
 </body>
+
 </html>
