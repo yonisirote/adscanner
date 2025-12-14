@@ -35,10 +35,10 @@ Extension → Backend Server → External APIs
 - [x] 2.4 Add SQLite caching layer
 - [x] 2.5 Create `/check` endpoint (accepts URL, returns risk score)
 
-### Phase 3: Integration
+### Phase 3: Integration ✅
 - [x] 3.1 Extension calls backend API
 - [x] 3.2 Display results in popup (list of ads + scores)
-- [ ] 3.3 Visual indicators on page (badge/overlay on suspicious ads)
+- [x] 3.3 Visual indicators on page (badge/overlay on suspicious ads)
 
 ### Phase 4: Polish
 - [ ] 4.1 Rate limiting + error handling
