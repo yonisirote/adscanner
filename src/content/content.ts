@@ -1,6 +1,7 @@
 import { detectAllAds } from './adDetector';
 import { injectStyles, addOverlay, removeAllBadges } from './adOverlay';
-import type { DetectedAd, MessageAction, CheckUrlMessage, CheckUrlResponse } from '../types';
+import { MessageAction } from '../types';
+import type { DetectedAd, CheckUrlMessage, CheckUrlResponse } from '../types';
 
 // Content script
 console.log('[Content] Ad Scanner content script loaded on', window.location.href);
